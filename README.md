@@ -4,6 +4,20 @@ Ecossistema de **totens de acessibilidade + Web App** para o Capim Dourado Shopp
 
 O visitante usa o totem ou lê o QR Code e o guia abre no próprio celular: rotas passo a passo nos dois pisos, guia por voz, alto contraste, comunicação por imagens e chamada de assistência (SOS).
 
+## Telas
+
+| Boas-vindas | Aranha de Halloween | Menu | Destinos |
+|---|---|---|---|
+| ![Boas-vindas](docs/imagens/01_boas_vindas.png) | ![Aranha](docs/imagens/02_aranha_halloween.png) | ![Menu](docs/imagens/03_menu.png) | ![Destinos](docs/imagens/04_destinos.png) |
+
+| Rota no Térreo | Troca para o Piso 1 | Chegada | Alto Contraste |
+|---|---|---|---|
+| ![Rota Térreo](docs/imagens/05_rota_terreo.png) | ![Rota Piso 1](docs/imagens/06_rota_piso1.png) | ![Chegada](docs/imagens/07_chegada.png) | ![Alto contraste](docs/imagens/08_alto_contraste.png) |
+
+| SOS salvo no banco | Totem: menu | Totem: rota + QR Code |
+|---|---|---|
+| ![SOS](docs/imagens/09_sos_banco.png) | ![Totem menu](docs/imagens/10_totem_menu.png) | ![Totem rota](docs/imagens/11_totem_rota_qr.png) |
+
 ## Problema
 
 Pessoas surdas, cegas, com deficiência física ou intelectual e turistas estrangeiros enfrentam barreiras para se localizar e se comunicar dentro do shopping (38.800 m², 2 pavimentos). O projeto segue a **LBI (Lei nº 13.146/2015)**, a **ABNT NBR 9050** e as diretrizes **WCAG**.
@@ -72,6 +86,10 @@ No modo totem, o celular precisa estar no **mesmo Wi-Fi** do PC para abrir o QR 
 ### Logo oficial
 
 Salve a logo em `assets/images/logo.png`. Sem o arquivo, o app mostra uma logo provisória.
+
+## Código completo em um arquivo
+
+`CODIGO_COMPLETO.txt` reúne todas as linhas de código do projeto num único arquivo, com índice e contagem de linhas, para leitura e avaliação.
 
 ## Totem físico (esboço)
 
