@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets/aranha_overlay.dart';
 import '../widgets/comuns.dart';
+import '../widgets/halloween.dart';
 import '../widgets/phone_frame.dart';
 import '../config.dart';
 import 'home_screen.dart';
@@ -26,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    statusBarEscura.value = true;
+    statusBarEscura.value = false;
   }
 
   @override
@@ -61,8 +62,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final ac = AppScope.of(context).altoContraste;
+    final s = AppScope.of(context);
+    final largura = MediaQuery.of(context).size.width.clamp(280.0, 460.0);
     return Scaffold(
+      backgroundColor: Cores.verdeLogo,
       body: Semantics(
         button: true,
         label: 'Capim Dourado Shopping. Toque em qualquer lugar para começar.',
@@ -71,19 +74,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           onTap: _comecar,
           child: Stack(
             children: [
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: ac
-                          ? const [Colors.white, Colors.white]
-                          : const [Color(0xFFFFFBF2), Color(0xFFF7E7C0)],
-                    ),
-                  ),
-                ),
-              ),
+              // Fundo no mesmo verde da logo oficial
+              const Positioned.fill(child: ColoredBox(color: Cores.verdeLogo)),
               // Capim dourado balançando no rodapé
               Positioned(
                 left: 0,
@@ -95,14 +87,33 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   builder: (_, _) => CustomPaint(painter: _CapimPainter(_anim.value)),
                 ),
               ),
+              if (s.halloween) ...[
+                const Positioned(left: 18, bottom: 26, child: Abobora(tamanho: 54)),
+                const Positioned(right: 26, bottom: 40, child: Abobora(tamanho: 40)),
+                const Positioned(left: 150, bottom: 14, child: Abobora(tamanho: 30, rosto: false)),
+              ],
               Center(
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 80),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const LogoOficial(largura: 260),
-                      const SizedBox(height: 56),
+                      // Logo oficial, idêntica; as bordas se fundem ao fundo verde.
+                      ShaderMask(
+                        blendMode: BlendMode.dstIn,
+                        shaderCallback: (r) => const RadialGradient(
+                          radius: 0.7,
+                          colors: [Colors.white, Colors.white, Colors.transparent],
+                          stops: [0, 0.8, 1],
+                        ).createShader(r),
+                        child: Image.asset(
+                          'assets/images/logo.jpg',
+                          width: largura,
+                          semanticLabel: 'Logo do Capim Dourado Shopping',
+                          errorBuilder: (_, _, _) => LogoCapim(tamanho: largura / 300),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       AnimatedBuilder(
                         animation: _anim,
                         builder: (_, child) => Opacity(
@@ -114,13 +125,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           duration: const Duration(milliseconds: 300),
                           child: const Column(
                             children: [
-                              Icon(Icons.touch_app_rounded, size: 40, color: Cores.verde),
+                              Icon(Icons.touch_app_rounded, size: 40, color: Cores.cremeLogo),
                               SizedBox(height: 8),
                               Text('Toque em qualquer lugar para começar',
                                   style: TextStyle(
                                       fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      color: Cores.verde)),
+                                      fontWeight: FontWeight.w700,
+                                      color: Cores.cremeLogo)),
                             ],
                           ),
                         ),
@@ -135,7 +146,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 bottom: MediaQuery.of(context).padding.bottom + 10,
                 child: const Text('Guia acessível · Grupo 18 ENTEI',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFF5E4A1A), fontSize: 12)),
+                    style: TextStyle(color: Color(0xCCF6E3C8), fontSize: 12)),
               ),
               if (_aranha) Positioned.fill(child: AranhaOverlay(aoTerminar: _irParaMenu)),
             ],

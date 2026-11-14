@@ -2,20 +2,36 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../data/geometria.dart';
 import '../data/models.dart';
 
 /// ~19.400 m² por pavimento → 1 unidade do mapa ≈ 0,18 m.
 const double metrosPorUnidade = 0.18;
-const Offset pontoTotem = Offset(350, 880);
-const double corredorX = 350;
-const Offset portaElevador = Offset(400, 490);
+
+/// Totem da entrada principal (sul), de frente para o corredor circular.
+final Offset pontoTotem = Geo.ponto(1.2, 90);
+
+/// Direção relativa ao visitante, mostrada no indicador (HUD) e falada pela voz.
+enum Direcao { inicio, frente, esquerda, direita, elevador, chegada }
 
 class PassoRota {
-  const PassoRota(this.icone, this.texto, this.andar);
+  const PassoRota({
+    required this.icone,
+    required this.texto,
+    required this.andar,
+    required this.direcao,
+    required this.rumo,
+  });
 
   final IconData icone;
   final String texto;
   final int andar;
+  final Direcao direcao;
+
+  /// Rumo de bússola em graus (0 = Norte, 90 = Leste) ao cumprir o passo.
+  final double rumo;
+
+  String get sentido => Geo.cardinal(rumo);
 }
 
 class RotaCalculada {
@@ -38,62 +54,144 @@ class RotaCalculada {
   int get metrosArredondados => max(5, (metros / 5).round() * 5);
 }
 
-/// Porta de entrada da zona (sempre voltada para o corredor central).
-Offset portaDa(Zona z) {
-  final cy = z.y + z.h / 2;
-  return z.x < corredorX ? Offset(z.x + z.w, cy) : Offset(z.x, cy);
+/// Porta da zona: na fachada, voltada para o corredor circular.
+Offset portaDa(Zona z) => z.ehSetor ? Geo.ponto(Geo.kFachada, z.angMeio) : Geo.centro;
+
+double _comprimento(List<Offset> pts) {
+  var d = 0.0;
+  for (var i = 1; i < pts.length; i++) {
+    d += (pts[i] - pts[i - 1]).distance;
+  }
+  return d * metrosPorUnidade;
 }
+
+String _fmt(double metros) => '${max(5, (metros / 5).round() * 5)} metros';
 
 RotaCalculada calcularRota(Zona destino) {
   final porta = portaDa(destino);
-  final naColunaEsquerda = destino.x < corredorX;
   final passos = <PassoRota>[];
   final caminhos = <int, List<Offset>>{};
+  final anelSul = Geo.ponto(Geo.kCorredor, 90);
 
-  double m(Offset a, Offset b) => (a - b).distance * metrosPorUnidade;
-  String fmt(double v) => '${max(5, (v / 5).round() * 5)} metros';
+  passos.add(const PassoRota(
+    icone: Icons.my_location,
+    texto: 'Você está no totem da Entrada Principal, no Térreo, de frente para o corredor circular, sentido Norte.',
+    andar: 0,
+    direcao: Direcao.inicio,
+    rumo: 0,
+  ));
 
-  passos.add(const PassoRota(Icons.my_location,
-      'Você está no totem da Entrada Principal, no Térreo. Fique de frente para o corredor central.', 0));
-
-  double metros;
   if (destino.andar == 0) {
-    final curva = Offset(corredorX, porta.dy);
-    caminhos[0] = [pontoTotem, curva, porta];
-    final d1 = m(pontoTotem, curva);
-    metros = d1 + m(curva, porta);
-    passos.add(PassoRota(Icons.straight, 'Siga em frente pelo corredor central por cerca de ${fmt(d1)}.', 0));
-    final lado = naColunaEsquerda ? 'esquerda' : 'direita';
-    passos.add(PassoRota(naColunaEsquerda ? Icons.turn_left : Icons.turn_right,
-        '${destino.nome} fica à sua $lado. Entre por ali.', 0));
+    final arco = Geo.arco(Geo.kCorredor, 90, destino.angMeio);
+    caminhos[0] = [pontoTotem, ...arco, porta];
+    final d = Geo.delta(90, destino.angMeio);
+    final esquerda = d > 0; // sentido horário na tela = à esquerda de quem entra
+    final rumoArco = Geo.rumo(arco[0], arco[1]);
+
+    passos.add(PassoRota(
+      icone: Icons.straight,
+      texto: 'Siga em frente, sentido Norte, por cerca de ${_fmt(_comprimento([pontoTotem, anelSul]))} até o corredor circular.',
+      andar: 0,
+      direcao: Direcao.frente,
+      rumo: 0,
+    ));
+    passos.add(PassoRota(
+      icone: esquerda ? Icons.turn_left : Icons.turn_right,
+      texto: 'Vire à ${esquerda ? 'esquerda' : 'direita'}, sentido ${Geo.cardinal(rumoArco)}, '
+          'e acompanhe a curva do corredor por cerca de ${_fmt(_comprimento(arco))}.',
+      andar: 0,
+      direcao: esquerda ? Direcao.esquerda : Direcao.direita,
+      rumo: rumoArco,
+    ));
+    final lado = esquerda ? 'esquerda' : 'direita';
+    final rumoFinal = Geo.rumo(arco.last, porta);
+    passos.add(PassoRota(
+      icone: esquerda ? Icons.turn_left : Icons.turn_right,
+      texto: '${destino.nome} fica à sua $lado, sentido ${Geo.cardinal(rumoFinal)}. Vire à $lado para entrar.',
+      andar: 0,
+      direcao: esquerda ? Direcao.esquerda : Direcao.direita,
+      rumo: rumoFinal,
+    ));
   } else {
-    final cruzamento = Offset(corredorX, portaElevador.dy);
-    caminhos[0] = [pontoTotem, cruzamento, portaElevador];
-    final d1 = m(pontoTotem, cruzamento);
-    passos.add(PassoRota(Icons.straight, 'Siga em frente pelo corredor central por cerca de ${fmt(d1)}.', 0));
-    passos.add(const PassoRota(Icons.turn_right, 'Os elevadores ficam à sua direita.', 0));
-    passos.add(PassoRota(Icons.elevator,
-        'Pegue o elevador acessível, ou a escada rolante, e suba para o Piso ${destino.andar}.', 0));
+    // Térreo: entrada → passarela sul → elevador panorâmico no centro.
+    final elevadorSul = Geo.ponto(Geo.kElevador, 90);
+    caminhos[0] = [pontoTotem, anelSul, elevadorSul];
+    passos.add(PassoRota(
+      icone: Icons.straight,
+      texto: 'Siga em frente, sentido Norte, atravesse o corredor circular e continue pela passarela '
+          'até o elevador panorâmico, no centro (cerca de ${_fmt(_comprimento(caminhos[0]!))}).',
+      andar: 0,
+      direcao: Direcao.frente,
+      rumo: 0,
+    ));
+    passos.add(PassoRota(
+      icone: Icons.elevator,
+      texto: 'Pegue o elevador acessível e suba para o Piso ${destino.andar}.',
+      andar: 0,
+      direcao: Direcao.elevador,
+      rumo: 0,
+    ));
 
-    final curva = Offset(corredorX, porta.dy);
-    caminhos[destino.andar] = [portaElevador, cruzamento, curva, porta];
-    final d3 = m(cruzamento, curva);
-    metros = d1 + 2 * m(cruzamento, portaElevador) + d3 + m(curva, porta);
+    // Piso de destino: sai pela passarela mais próxima do destino.
+    final ponte = Geo.passarelas.reduce(
+        (a, b) => Geo.delta(a, destino.angMeio).abs() <= Geo.delta(b, destino.angMeio).abs() ? a : b);
+    final saida = Geo.ponto(Geo.kElevador, ponte);
+    final anel = Geo.ponto(Geo.kCorredor, ponte);
+    final d = Geo.delta(ponte, destino.angMeio);
+    final arco = d.abs() < 6 ? [anel] : Geo.arco(Geo.kCorredor, ponte, destino.angMeio);
+    caminhos[destino.andar] = [saida, ...arco, porta];
+    final rumoPonte = Geo.rumo(saida, anel);
 
-    // Ao sair do elevador o visitante está de frente para o oeste (corredor):
-    // o norte (topo do mapa) fica à direita.
-    final subindoNoMapa = porta.dy < cruzamento.dy;
-    passos.add(PassoRota(Icons.elevator,
-        'Ao sair do elevador no Piso ${destino.andar}, caminhe até o corredor central.', destino.andar));
-    final virar = subindoNoMapa ? 'direita' : 'esquerda';
-    passos.add(PassoRota(subindoNoMapa ? Icons.turn_right : Icons.turn_left,
-        'Vire à $virar e siga pelo corredor por cerca de ${fmt(d3)}.', destino.andar));
-    final ladoDestino = naColunaEsquerda == subindoNoMapa ? 'esquerda' : 'direita';
-    passos.add(PassoRota(ladoDestino == 'esquerda' ? Icons.turn_left : Icons.turn_right,
-        '${destino.nome} fica à sua $ladoDestino.', destino.andar));
+    passos.add(PassoRota(
+      icone: Icons.straight,
+      texto: 'Ao sair do elevador no Piso ${destino.andar}, siga pela passarela sentido ${Geo.cardinal(rumoPonte)} '
+          'até o corredor circular (cerca de ${_fmt(_comprimento([saida, anel]))}).',
+      andar: destino.andar,
+      direcao: Direcao.frente,
+      rumo: rumoPonte,
+    ));
+
+    if (arco.length == 1) {
+      passos.add(PassoRota(
+        icone: Icons.straight,
+        texto: '${destino.nome} fica logo à sua frente, do outro lado do corredor.',
+        andar: destino.andar,
+        direcao: Direcao.frente,
+        rumo: rumoPonte,
+      ));
+    } else {
+      // Vindo de dentro para fora, o sentido horário fica à direita.
+      final direita = d > 0;
+      final rumoArco = Geo.rumo(arco[0], arco[1]);
+      passos.add(PassoRota(
+        icone: direita ? Icons.turn_right : Icons.turn_left,
+        texto: 'Vire à ${direita ? 'direita' : 'esquerda'}, sentido ${Geo.cardinal(rumoArco)}, '
+            'e acompanhe a curva do corredor por cerca de ${_fmt(_comprimento(arco))}.',
+        andar: destino.andar,
+        direcao: direita ? Direcao.direita : Direcao.esquerda,
+        rumo: rumoArco,
+      ));
+      // No sentido horário, as lojas (lado de fora do anel) ficam à esquerda.
+      final lado = d > 0 ? 'esquerda' : 'direita';
+      final rumoFinal = Geo.rumo(arco.last, porta);
+      passos.add(PassoRota(
+        icone: lado == 'esquerda' ? Icons.turn_left : Icons.turn_right,
+        texto: '${destino.nome} fica à sua $lado, sentido ${Geo.cardinal(rumoFinal)}.',
+        andar: destino.andar,
+        direcao: lado == 'esquerda' ? Direcao.esquerda : Direcao.direita,
+        rumo: rumoFinal,
+      ));
+    }
   }
 
-  passos.add(PassoRota(Icons.flag_rounded, 'Você chegou: ${destino.nome}!', destino.andar));
+  passos.add(PassoRota(
+    icone: Icons.flag_rounded,
+    texto: 'Você chegou: ${destino.nome}!',
+    andar: destino.andar,
+    direcao: Direcao.chegada,
+    rumo: passos.last.rumo,
+  ));
 
+  final metros = caminhos.values.fold(0.0, (s, c) => s + _comprimento(c));
   return RotaCalculada(destino: destino, caminhos: caminhos, passos: passos, metros: metros);
 }

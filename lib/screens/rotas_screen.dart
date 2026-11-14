@@ -21,7 +21,9 @@ class _RotasScreenState extends State<RotasScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AppScope.read(context).anunciar('Para onde você quer ir? Escolha um destino na lista.');
+      AppScope.read(context)
+        ..registrar('recurso', 'rotas')
+        ..anunciar('Para onde você quer ir? Escolha um destino na lista.');
     });
   }
 
@@ -52,11 +54,11 @@ class _RotasScreenState extends State<RotasScreen> {
                 fillColor: p.cartao,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: p.ac ? const BorderSide(color: Cores.amareloAC, width: 2) : BorderSide.none,
+                  borderSide: p.ac ? BorderSide(color: Cores.amareloAC, width: 2) : BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: p.ac ? const BorderSide(color: Cores.amareloAC, width: 2) : BorderSide.none,
+                  borderSide: p.ac ? BorderSide(color: Cores.amareloAC, width: 2) : BorderSide.none,
                 ),
               ),
             ),

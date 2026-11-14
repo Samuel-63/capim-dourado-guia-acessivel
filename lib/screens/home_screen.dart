@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../theme.dart';
+import '../widgets/halloween.dart';
 import 'caa_screen.dart';
 import 'mapa_screen.dart';
+import 'relatorio_screen.dart';
 import 'rotas_screen.dart';
 import 'sos_screen.dart';
 import 'voz_screen.dart';
@@ -43,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             decoration: BoxDecoration(
               color: p.cabecalho,
-              border: p.ac ? const Border(bottom: BorderSide(color: Cores.amareloAC, width: 2)) : null,
+              border: p.ac ? Border(bottom: BorderSide(color: Cores.amareloAC, width: 2)) : null,
               borderRadius: p.ac ? null : const BorderRadius.vertical(bottom: Radius.circular(28)),
             ),
             padding: EdgeInsets.fromLTRB(20, topo + 6, 20, 20),
@@ -51,15 +53,20 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
+                  // Logo oficial (recorte do "O" com os laços)
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: p.ac ? Colors.black : Cores.dourado,
                       shape: BoxShape.circle,
-                      border: p.ac ? Border.all(color: Cores.amareloAC, width: 2) : null,
+                      border: Border.all(color: p.ac ? Cores.amareloAC : Cores.cremeLogo, width: 2),
+                      image: const DecorationImage(
+                        image: AssetImage('assets/images/logo.jpg'),
+                        fit: BoxFit.cover,
+                        scale: 0.55,
+                        alignment: Alignment(0, -0.25),
+                      ),
                     ),
-                    child: Icon(Icons.grass, color: p.cabecalhoTexto),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -70,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: p.cabecalhoTexto, fontSize: 22, fontWeight: FontWeight.w800)),
                     ),
                   ),
+                  if (s.halloween) const Abobora(tamanho: 34),
                 ]),
                 const SizedBox(height: 14),
                 Container(
@@ -116,10 +124,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     BotaoAcao(
                       icone: Icons.contrast,
                       titulo: 'Alto Contraste',
-                      subtitulo: s.altoContraste ? 'Ligado' : 'Desligado',
+                      subtitulo: s.halloween
+                          ? 'Modo Halloween'
+                          : (s.altoContraste ? 'Ligado · 2 toques: Halloween' : 'Desligado · 2 toques: Halloween'),
                       cor: const Color(0xFF263238),
                       ligado: s.altoContraste,
-                      onTap: s.alternarAltoContraste,
+                      selo: s.halloween ? const Abobora(tamanho: 22) : null,
+                      onTap: s.tocarContraste,
                     ),
                     BotaoAcao(
                       icone: Icons.sos,
@@ -150,6 +161,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () => _abrir(const MapaScreen()),
                     ),
                   ],
+                ),
+                const SizedBox(height: 14),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => _abrir(const RelatorioScreen()),
+                    icon: Icon(Icons.insights_rounded, color: p.textoSuave),
+                    label: Text('Painel da gestão do shopping',
+                        style: TextStyle(color: p.textoSuave, fontWeight: FontWeight.w600)),
+                  ),
                 ),
               ],
             ),
@@ -243,8 +263,11 @@ class BotaoAcao extends StatelessWidget {
     required this.cor,
     required this.onTap,
     this.ligado,
+    this.selo,
   });
 
+  /// Enfeite opcional ao lado do ON/OFF (ex.: abóbora no modo Halloween).
+  final Widget? selo;
   final IconData icone;
   final String titulo;
   final String subtitulo;
@@ -292,6 +315,7 @@ class BotaoAcao extends StatelessWidget {
                       ),
                       child: Icon(icone, color: corIcone, size: 28),
                     ),
+                    if (selo != null) ...[const Spacer(), selo!, const SizedBox(width: 4)],
                     if (ligado != null)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -318,7 +342,7 @@ class BotaoAcao extends StatelessWidget {
                     style: TextStyle(
                         color: p.texto, fontSize: 16, fontWeight: FontWeight.w800, height: 1.15)),
                 const SizedBox(height: 2),
-                Text(subtitulo, style: TextStyle(color: p.textoSuave, fontSize: 13)),
+                Text(subtitulo, maxLines: 2, style: TextStyle(color: p.textoSuave, fontSize: 13)),
               ],
             ),
           ),

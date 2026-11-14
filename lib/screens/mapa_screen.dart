@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../config.dart';
+import '../data/geometria.dart';
 import '../data/icones.dart';
 import '../data/models.dart';
 import '../logic/rota.dart';
 import '../theme.dart';
 import '../widgets/comuns.dart';
+import '../widgets/hud_orientacao.dart';
 import '../widgets/mapa_shopping.dart';
 
 /// Mapa com rota passo a passo (quando há destino) ou modo exploração.
@@ -23,6 +25,10 @@ class _MapaScreenState extends State<MapaScreen> {
   RotaCalculada? _rota;
   int _andar = 0;
   int _passo = 0;
+  String? _aviso;
+
+  /// Rumo exibido na bússola (acumulado para girar pelo caminho mais curto).
+  double _rumo = 0;
 
   @override
   void initState() {
@@ -34,10 +40,12 @@ class _MapaScreenState extends State<MapaScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final s = AppScope.read(context);
       if (_rota != null) {
+        s.registrar('rota', _rota!.destino.id);
         s.anunciar('Rota até ${_rota!.destino.nome}, ${_rota!.destino.nomeAndar}. '
-            'Cerca de ${_rota!.metrosArredondados} metros. ${_rota!.passos.first.texto}');
+            'Cerca de ${_rota!.metrosArredondados} metros. ${_textoFalado(_rota!.passos.first)}');
       } else {
-        s.anunciar('Mapa do shopping. Toque em uma área para ver o nome.');
+        s.registrar('recurso', 'mapa');
+        s.anunciar('Mapa do shopping. O Norte fica para cima. Toque em uma área para ver o nome.');
       }
     });
   }
@@ -53,29 +61,36 @@ class _MapaScreenState extends State<MapaScreen> {
     super.dispose();
   }
 
+  /// Texto para a voz, com a referência de direção (HUD) incluída.
+  String _textoFalado(PassoRota p) => switch (p.direcao) {
+        Direcao.esquerda => 'À esquerda. ${p.texto}',
+        Direcao.direita => 'À direita. ${p.texto}',
+        Direcao.frente => 'Em frente. ${p.texto}',
+        _ => p.texto,
+      };
+
   void _irParaPasso(int i) {
     final rota = _rota!;
-    final novoAndar = rota.passos[i].andar;
-    final trocouAndar = novoAndar != _andar;
+    final passo = rota.passos[i];
+    final trocouAndar = passo.andar != _andar;
     setState(() {
       _passo = i;
-      _andar = novoAndar;
+      _andar = passo.andar;
+      _rumo += Geo.delta(_rumo, passo.rumo);
     });
-    final s = AppScope.read(context);
-    s.anunciar(rota.passos[i].texto);
+    AppScope.read(context).anunciar(_textoFalado(passo));
     if (trocouAndar) {
-      setState(() => _aviso = 'Agora você está no ${novoAndar == 0 ? 'Térreo' : 'Piso $novoAndar'}');
+      setState(() => _aviso = 'Agora você está no ${passo.andar == 0 ? 'Térreo' : 'Piso ${passo.andar}'}');
       Future<void>.delayed(const Duration(milliseconds: 2600), () {
         if (mounted) setState(() => _aviso = null);
       });
     }
   }
 
-  String? _aviso;
-
   void _tocouZona(Zona z) {
-    final p = Paleta(AppScope.read(context).altoContraste);
-    AppScope.read(context).anunciar(z.nome);
+    final s = AppScope.read(context);
+    final p = Paleta(s.altoContraste);
+    s.anunciar(z.nome);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: p.cartao,
@@ -114,8 +129,7 @@ class _MapaScreenState extends State<MapaScreen> {
                   label: const Text('Traçar rota até aqui', style: TextStyle(fontSize: 18)),
                   onPressed: () {
                     Navigator.pop(ctx);
-                    Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => MapaScreen(destino: z)));
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => MapaScreen(destino: z)));
                   },
                 ),
               ),
@@ -151,10 +165,8 @@ class _MapaScreenState extends State<MapaScreen> {
                 Icon(Icons.accessible_forward, color: p.ac ? Cores.amareloAC : const Color(0xFF1565C0)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Rota acessível: usa o elevador para o ${rota.destino.nomeAndar}',
-                      style: TextStyle(
-                          color: p.ac ? Colors.white : const Color(0xFF0D47A1),
-                          fontWeight: FontWeight.w600)),
+                  child: Text('Rota acessível: usa o elevador panorâmico para o ${rota.destino.nomeAndar}',
+                      style: TextStyle(color: p.ac ? Colors.white : const Color(0xFF0D47A1), fontWeight: FontWeight.w600)),
                 ),
               ]),
             ),
@@ -170,9 +182,7 @@ class _MapaScreenState extends State<MapaScreen> {
                       value: a,
                       label: Text(a == 0 ? 'Térreo' : 'Piso 1',
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                      icon: rota?.caminhos.containsKey(a) ?? false
-                          ? const Icon(Icons.route, size: 18)
-                          : null,
+                      icon: rota?.caminhos.containsKey(a) ?? false ? const Icon(Icons.route, size: 18) : null,
                     ),
                 ],
                 selected: {_andar},
@@ -183,11 +193,12 @@ class _MapaScreenState extends State<MapaScreen> {
           Expanded(
             child: Semantics(
               label: rota == null
-                  ? 'Mapa ilustrado do ${_andar == 0 ? 'Térreo' : 'Piso 1'}'
+                  ? 'Mapa ilustrado do ${_andar == 0 ? 'Térreo' : 'Piso 1'}, com o Norte para cima'
                   : 'Mapa com a rota até ${rota.destino.nome}',
               child: Stack(
                 children: [
                   Positioned.fill(
+                    top: rota != null ? 58 : 0,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 350),
                       child: MapaShopping(
@@ -195,14 +206,28 @@ class _MapaScreenState extends State<MapaScreen> {
                         zonas: s.zonas,
                         andar: _andar,
                         altoContraste: s.altoContraste,
+                        halloween: s.halloween,
                         destino: rota?.destino,
                         caminho: rota?.caminhos[_andar],
                         onTapZona: rota == null ? _tocouZona : null,
                       ),
                     ),
                   ),
+                  if (rota != null)
+                    Positioned(
+                      top: 6,
+                      left: 8,
+                      right: 8,
+                      child: IgnorePointer(
+                        child: HudOrientacao(
+                          rumo: _rumo,
+                          direcao: rota.passos[_passo].direcao,
+                          altoContraste: s.altoContraste,
+                        ),
+                      ),
+                    ),
                   Positioned(
-                    top: 8,
+                    top: rota != null ? 62 : 8,
                     left: 0,
                     right: 0,
                     child: IgnorePointer(
@@ -222,9 +247,7 @@ class _MapaScreenState extends State<MapaScreen> {
                               const SizedBox(width: 8),
                               Text(_aviso ?? '',
                                   style: TextStyle(
-                                      color: p.ac ? Colors.black : Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 15)),
+                                      color: p.ac ? Colors.black : Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
                             ]),
                           ),
                         ),
@@ -250,7 +273,7 @@ class _MapaScreenState extends State<MapaScreen> {
       decoration: BoxDecoration(
         color: p.cartao,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-        border: p.ac ? const Border(top: BorderSide(color: Cores.amareloAC, width: 2)) : null,
+        border: p.ac ? Border(top: BorderSide(color: Cores.amareloAC, width: 2)) : null,
         boxShadow: p.ac ? null : const [BoxShadow(color: Color(0x22000000), blurRadius: 20, offset: Offset(0, -4))],
       ),
       padding: EdgeInsets.fromLTRB(18, 14, 18, MediaQuery.of(context).padding.bottom + 12),
@@ -269,6 +292,8 @@ class _MapaScreenState extends State<MapaScreen> {
           const SizedBox(height: 12),
           Semantics(
             liveRegion: true,
+            label: _textoFalado(passo),
+            excludeSemantics: true,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -286,12 +311,11 @@ class _MapaScreenState extends State<MapaScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Passo ${_passo + 1} de ${rota.passos.length}',
+                      Text('Passo ${_passo + 1} de ${rota.passos.length} · sentido ${passo.sentido}',
                           style: TextStyle(color: p.textoSuave, fontSize: 13, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
                       Text(passo.texto,
-                          style: TextStyle(
-                              color: p.texto, fontSize: 18, fontWeight: FontWeight.w700, height: 1.25)),
+                          style: TextStyle(color: p.texto, fontSize: 17, fontWeight: FontWeight.w700, height: 1.25)),
                     ],
                   ),
                 ),
@@ -312,7 +336,7 @@ class _MapaScreenState extends State<MapaScreen> {
               SizedBox(
                 height: 52,
                 child: OutlinedButton.icon(
-                  onPressed: () => s.fala.falar(passo.texto),
+                  onPressed: () => s.fala.falar(_textoFalado(passo)),
                   icon: const Icon(Icons.volume_up_rounded),
                   label: const Text('Ouvir'),
                 ),

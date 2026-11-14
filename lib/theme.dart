@@ -8,13 +8,23 @@ class Cores {
   static const dourado = Color(0xFFC8961E);
   static const douradoClaro = Color(0xFFF2C14E);
   static const creme = Color(0xFFFFF8E8);
-  static const amareloAC = Color(0xFFFFD600);
+  /// Ativado com 2 toques no botão Alto Contraste (ver AppState).
+  static bool halloween = false;
+
+  /// Destaque do Alto Contraste: amarelo (normal) ou laranja-abóbora (Halloween).
+  /// Ambos passam de 7:1 sobre preto (WCAG AAA).
+  static const amareloPuro = Color(0xFFFFD600);
+  static const laranjaHalloween = Color(0xFFFF9A1F);
+  static Color get amareloAC => halloween ? laranjaHalloween : amareloPuro;
+  static const roxoHalloween = Color(0xFF9C4DFF);
+  static const verdeLogo = Color(0xFF676E4F);
+  static const cremeLogo = Color(0xFFF6E3C8);
   static const laranjaRota = Color(0xFFE65100);
 }
 
 ThemeData construirTema({required bool altoContraste}) {
   if (altoContraste) {
-    const scheme = ColorScheme.dark(
+    final scheme = ColorScheme.dark(
       primary: Cores.amareloAC,
       onPrimary: Colors.black,
       secondary: Cores.amareloAC,

@@ -24,7 +24,7 @@ class Cabecalho extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: p.cabecalho,
-        border: p.ac ? const Border(bottom: BorderSide(color: Cores.amareloAC, width: 2)) : null,
+        border: p.ac ? Border(bottom: BorderSide(color: Cores.amareloAC, width: 2)) : null,
       ),
       padding: EdgeInsets.fromLTRB(voltar ? 4 : 20, topo + 4, 12, 14),
       child: Row(

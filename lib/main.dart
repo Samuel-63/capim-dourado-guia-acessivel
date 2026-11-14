@@ -5,6 +5,7 @@ import 'data/database.dart';
 import 'screens/splash_screen.dart';
 import 'theme.dart';
 import 'config.dart';
+import 'widgets/halloween.dart';
 import 'widgets/phone_frame.dart';
 import 'widgets/totem_frame.dart';
 
@@ -27,8 +28,14 @@ class CapimDouradoApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: construirTema(altoContraste: s.altoContraste),
       navigatorKey: navegadorKey,
-      builder: (context, child) =>
-          modoTotem ? TotemFrame(child: child!) : PhoneFrame(child: child!),
+      builder: (context, child) {
+        // Modo Halloween: teias e morcegos por cima de todas as telas.
+        final app = Stack(children: [
+          Positioned.fill(child: child!),
+          if (s.halloween) const Positioned.fill(child: HalloweenOverlay()),
+        ]);
+        return modoTotem ? TotemFrame(child: app) : PhoneFrame(child: app);
+      },
       home: const SplashScreen(),
     );
   }

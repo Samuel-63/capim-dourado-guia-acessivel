@@ -32,7 +32,9 @@ class _VozScreenState extends State<VozScreen> {
   void _falar([String? t]) {
     final frase = (t ?? _texto.text).trim();
     if (frase.isEmpty) return;
-    AppScope.read(context).fala.falar(frase, idioma: _idioma);
+    AppScope.read(context)
+      ..fala.falar(frase, idioma: _idioma)
+      ..registrar('recurso', 'voz');
   }
 
   @override
@@ -103,7 +105,7 @@ class _VozScreenState extends State<VozScreen> {
                       tileColor: p.cartao,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        side: p.ac ? const BorderSide(color: Cores.amareloAC) : BorderSide.none,
+                        side: p.ac ? BorderSide(color: Cores.amareloAC) : BorderSide.none,
                       ),
                       leading: Icon(Icons.volume_up_rounded, color: p.destaque),
                       title: Text(f, style: TextStyle(fontSize: 17, color: p.texto, fontWeight: FontWeight.w600)),

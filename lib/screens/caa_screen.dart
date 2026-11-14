@@ -82,6 +82,7 @@ class CaaScreen extends StatelessWidget {
   void _mostrar(BuildContext context, IconData icone, String frase, Color cor) {
     final s = AppScope.read(context);
     s.fala.falar(frase);
+    s.registrar('recurso', 'caa');
     final ac = s.altoContraste;
     showDialog<void>(
       context: context,
@@ -89,7 +90,7 @@ class CaaScreen extends StatelessWidget {
         backgroundColor: ac ? Colors.black : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
-          side: ac ? const BorderSide(color: Cores.amareloAC, width: 3) : BorderSide.none,
+          side: ac ? BorderSide(color: Cores.amareloAC, width: 3) : BorderSide.none,
         ),
         child: Padding(
           padding: const EdgeInsets.all(24),

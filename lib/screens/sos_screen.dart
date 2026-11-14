@@ -46,6 +46,7 @@ class _SosScreenState extends State<SosScreen> {
     final s = AppScope.read(context);
     setState(() => _enviando = true);
     final id = await s.db.registrarChamado(tipo: _tipos[_tipo].$2, local: s.localAtual);
+    s.registrar('recurso', 'sos');
     setState(() {
       _enviando = false;
       _chamadoId = id;
